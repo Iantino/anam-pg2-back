@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   crearTramite, listarTramites, obtenerExpediente, cambiarEstado, asignarResponsable,
 } = require("../controllers/tramites.controller");
-const { subirDocumento, descargarDocumento } = require("../controllers/documentos.controller");
+const { subirDocumento, descargarDocumento, eliminarDocumento } = require("../controllers/documentos.controller");
 const requireAuth = require("../middleware/requireAuth");
 const requireRole = require("../middleware/requireRole");
 const upload = require("../middleware/upload");
@@ -22,5 +22,6 @@ router.put("/:id/responsable", requireRole("Administrador"), asignarResponsable)
 
 router.post("/:id/documentos", upload.single("archivo"), subirDocumento);
 router.get("/documentos/:id/descargar", descargarDocumento);
+router.delete("/documentos/:id", eliminarDocumento);
 
 module.exports = router;

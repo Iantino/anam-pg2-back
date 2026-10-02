@@ -129,8 +129,11 @@ const obtenerExpediente = asyncHandler(async (req, res) => {
   }
 
   const [documentos] = await pool.query(
-    `SELECT id, nombre_original, tipo_mime, tamano, fecha_carga
-     FROM documentos WHERE tramite_id = ? ORDER BY fecha_carga DESC`,
+    `SELECT d.id, d.nombre_original, d.tipo_mime, d.tamano, d.fecha_carga,
+            d.usuario_id, u.nombre AS subido_por
+     FROM documentos d
+     LEFT JOIN usuarios u ON u.id = d.usuario_id
+     WHERE d.tramite_id = ? ORDER BY d.fecha_carga DESC`,
     [id]
   );
 
