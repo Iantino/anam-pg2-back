@@ -11,6 +11,15 @@ const { registrarAuditoria } = require("../utils/auditoria");
 const asyncHandler = require("../utils/asyncHandler");
 const { verificarAccesoTramite, esAdministrador } = require("../utils/accesoTramite");
 
+// Multer entrega el nombre del archivo interpretado como latin1, así que los
+// nombres con tildes o ñ llegan dañados ("Ñandú" → "Ã‘andÃº"). Se vuelve a
+// interpretar como UTF-8; si el resultado no es válido se deja el original.
+function corregirNombreArchivo(nombre) {
+  if (/[^\u0000-\u00ff]/.test(nombre)) return nombre; // ya viene en Unicode
+  const corregido = Buffer.from(nombre, "latin1").toString("utf8");
+  return corregido.includes("\uFFFD") ? nombre : corregido;
+}
+
 const subirDocumento = asyncHandler(async (req, res) => {
   const { id: tramiteId } = req.params;
   const usuarioId = req.session.usuario.id;
@@ -25,10 +34,12 @@ const subirDocumento = asyncHandler(async (req, res) => {
     return res.status(acceso.status).json({ error: acceso.error });
   }
 
+  const nombreOriginal = corregirNombreArchivo(req.file.originalname);
+
   const [resultado] = await pool.query(
     `INSERT INTO documentos (tramite_id, nombre_original, ruta, tipo_mime, tamano, usuario_id)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [tramiteId, req.file.originalname, req.file.filename, req.file.mimetype, req.file.size, usuarioId]
+    [tramiteId, nombreOriginal, req.file.filename, req.file.mimetype, req.file.size, usuarioId]
   );
 
   await registrarAuditoria({
@@ -36,12 +47,12 @@ const subirDocumento = asyncHandler(async (req, res) => {
     accion: "crear",
     tabla: "documentos",
     registroId: resultado.insertId,
-    detalle: `Documento "${req.file.originalname}" asociado al trámite ${tramiteId}`,
+    detalle: `Documento "${nombreOriginal}" asociado al trámite ${tramiteId}`,
   });
 
   res.status(201).json({
     id: resultado.insertId,
-    nombre_original: req.file.originalname,
+    nombre_original: nombreOriginal,
     tipo_mime: req.file.mimetype,
     tamano: req.file.size,
   });
